@@ -12,7 +12,7 @@ export default function DashboardLayout({
     <div className="min-h-screen bg-slate-50 pb-[env(safe-area-inset-bottom)] sm:pb-0 relative">
       <TopBar />
       <WelcomeToast />
-      <main className="max-w-2xl mx-auto p-4 pb-28">
+      <main className="max-w-2xl mx-auto px-2 py-4 sm:px-4 pb-28">
         {children}
       </main>
       <BottomNav />

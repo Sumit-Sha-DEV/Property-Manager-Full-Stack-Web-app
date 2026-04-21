@@ -35,6 +35,7 @@ CREATE TABLE clients (
   requirement TEXT NOT NULL CHECK (requirement IN ('Rent', 'Buy')),
   budget NUMERIC NOT NULL,
   preferred_locations JSONB DEFAULT '[]'::jsonb, -- Store array of locations
+  configuration JSONB DEFAULT '{}'::jsonb, -- Store detailed requirements (BHK, Area, etc.)
   notes TEXT,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE, -- Track creator
   created_at TIMESTAMPTZ DEFAULT NOW(),

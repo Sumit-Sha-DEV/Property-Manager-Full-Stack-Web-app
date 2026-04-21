@@ -19,6 +19,16 @@ export async function createClientRecord(formData: FormData) {
     ? (formData.get('preferred_locations') as string).split(',').map(s => s.trim())
     : [];
 
+  const configRaw = formData.get('config') as string;
+  let configuration = {};
+  if (configRaw) {
+    try {
+      configuration = JSON.parse(configRaw);
+    } catch (e) {
+      console.error('Failed to parse client config:', e);
+    }
+  }
+
   const { data: client, error } = await supabase
     .from('clients')
     .insert({
@@ -28,6 +38,7 @@ export async function createClientRecord(formData: FormData) {
       budget,
       preferred_locations,
       notes,
+      configuration,
       user_id: user.id
     })
     .select()
@@ -62,6 +73,16 @@ export async function updateClientRecord(id: string, formData: FormData) {
     ? (formData.get('preferred_locations') as string).split(',').map(s => s.trim())
     : [];
 
+  const configRaw = formData.get('config') as string;
+  let configuration = {};
+  if (configRaw) {
+    try {
+      configuration = JSON.parse(configRaw);
+    } catch (e) {
+      console.error('Failed to parse client config:', e);
+    }
+  }
+
   const { data: client, error } = await supabase
     .from('clients')
     .update({
@@ -71,6 +92,7 @@ export async function updateClientRecord(id: string, formData: FormData) {
       budget,
       preferred_locations,
       notes,
+      configuration,
     })
     .eq('id', id)
     .eq('user_id', user.id)

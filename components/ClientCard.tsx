@@ -1,9 +1,10 @@
 'use client'
 
-import { User, Phone, MapPin, IndianRupee, Trash2, Edit2 } from 'lucide-react'
+import { User, Phone, MapPin, IndianRupee, Trash2, Edit2, Maximize } from 'lucide-react'
 import { deleteClient } from '@/actions/client.actions'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { EditClientModal } from '@/app/(dashboard)/clients/EditClientModal'
 
 export function ClientCard({ client }: { client: any }) {
@@ -37,15 +38,22 @@ export function ClientCard({ client }: { client: any }) {
     <>
       <div 
         onClick={handleCardClick}
-        className="bg-white/95 backdrop-blur-3xl rounded-[2rem] shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-indigo-50/50 p-4 relative touch-manipulation transition-all hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:-translate-y-1 cursor-pointer"
+        className="bg-white/95 backdrop-blur-3xl rounded-[2.5rem] shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-indigo-50/50 p-5 relative touch-manipulation transition-all hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:-translate-y-1 cursor-pointer w-full"
         role="button"
         tabIndex={0}
       >
         <div className="flex justify-between items-start mb-3">
           <div className="flex-1 pr-2">
             <h3 className="font-extrabold text-slate-800 text-lg tracking-tight flex items-center gap-2">
-              <div className="p-1.5 bg-indigo-50 rounded-full border border-indigo-100/50">
-                <User size={16} className="text-indigo-500" />
+              <div className="relative h-8 w-8 rounded-full overflow-hidden border border-indigo-100/50 shadow-sm shrink-0">
+                <Image 
+                  src={`https://ui-avatars.com/api/?name=${encodeURIComponent(client.name)}&background=6366f1&color=fff&bold=true`}
+                  alt={client.name}
+                  fill
+                  className="object-cover"
+                  sizes="32px"
+                  unoptimized
+                />
               </div>
               <span className="line-clamp-1">{client.name}</span>
             </h3>
@@ -82,7 +90,26 @@ export function ClientCard({ client }: { client: any }) {
           </div>
         </div>
 
-        <div className="space-y-2 mt-4 pt-4 border-t border-slate-100/80">
+        <div className="space-y-3 mt-4 pt-4 border-t border-slate-100/80">
+          <div className="flex flex-wrap gap-2 mb-2">
+            {client.configuration?.category && (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50/80 text-indigo-700 rounded-lg border border-indigo-100 shadow-sm text-[9px] font-black uppercase tracking-tight">
+                {client.configuration.category}
+              </div>
+            )}
+            {client.configuration?.bhk?.length > 0 && (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-50/80 text-blue-700 rounded-lg border border-blue-100 shadow-sm text-[9px] font-black uppercase tracking-tight">
+                {client.configuration.bhk.join(', ')} BHK
+              </div>
+            )}
+            {client.configuration?.required_area && (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-purple-50/80 text-purple-700 rounded-lg border border-purple-100 shadow-sm text-[9px] font-black uppercase tracking-tight">
+                <Maximize size={11} fill="currentColor" opacity={0.4} />
+                {client.configuration.required_area} ft²
+              </div>
+            )}
+          </div>
+
           <div className="flex items-center text-slate-800 text-sm font-bold">
             <IndianRupee size={14} className="mr-1.5 text-indigo-400" />
             Budget: <span className="ml-1 tracking-tight text-indigo-700">{client.budget.toLocaleString('en-IN')}</span>

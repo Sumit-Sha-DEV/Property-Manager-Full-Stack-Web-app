@@ -19,10 +19,8 @@ body {
   -webkit-font-smoothing: antialiased;
   
   /* Native App Constraints */
-  overscroll-behavior-y: none;
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
-  user-select: none;
 }
 
 /* Hide scrollbar globally for slick native feel */

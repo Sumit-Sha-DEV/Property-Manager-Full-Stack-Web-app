@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { MapPin, IndianRupee, Phone, User, ArrowLeft, Target, Wallet, FileText } from 'lucide-react'
+import { MapPin, IndianRupee, Phone, User, ArrowLeft, Target, Wallet, FileText, Bed, Maximize } from 'lucide-react'
 import { ClientActions } from './ClientActions'
 
 export default async function ClientDetailsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -25,30 +25,25 @@ export default async function ClientDetailsPage({ params }: { params: Promise<{ 
 
   return (
     <div className="pb-24 max-w-2xl mx-auto min-h-screen bg-gray-50/50">
-      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-3xl border-b border-gray-100 px-4 h-14 flex items-center justify-between shadow-sm">
-        <Link href="/clients" className="p-2 -ml-2 text-gray-500 hover:text-gray-900 transition-colors rounded-full hover:bg-gray-100">
-          <ArrowLeft size={20} />
-        </Link>
-        <span className="font-semibold text-gray-900 text-sm">Client Details</span>
-        <ClientActions client={client} />
-      </header>
-
-      <div className="p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-6">
         {/* Profile Card */}
-        <div className="bg-white/90 backdrop-blur-3xl p-6 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center border border-blue-100">
-              <User size={32} className="text-blue-500" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{client.name}</h1>
-              <div className={`mt-1 inline-flex px-3 py-1 rounded-full text-xs font-bold border ${
-                client.requirement === 'Buy' 
-                  ? 'bg-blue-50/80 text-blue-700 border-blue-200/50' 
-                  : 'bg-purple-50/80 text-purple-700 border-purple-200/50'
-              }`}>
-                TO {client.requirement.toUpperCase()}
-              </div>
+        <div className="bg-white/90 backdrop-blur-3xl p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 flex flex-col items-center text-center w-full relative">
+          {/* Action Button moved here for cleaner header */}
+          <div className="absolute top-6 right-6">
+            <ClientActions client={client} />
+          </div>
+
+          <div className="w-20 h-20 rounded-full bg-blue-50 flex items-center justify-center border border-blue-100 mb-4 shadow-inner">
+            <User size={40} className="text-blue-500" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">{client.name}</h1>
+            <div className={`mt-2 inline-flex px-4 py-1.5 rounded-full text-xs font-bold border tracking-wider ${
+              client.requirement === 'Buy' 
+                ? 'bg-blue-50 text-blue-700 border-blue-200/50' 
+                : 'bg-purple-50 text-purple-700 border-purple-200/50'
+            }`}>
+              TO {client.requirement.toUpperCase()}
             </div>
           </div>
         </div>
@@ -71,6 +66,60 @@ export default async function ClientDetailsPage({ params }: { params: Promise<{ 
             <span className="font-bold text-gray-900 flex items-center justify-center">
               <IndianRupee size={14} className="mr-0.5"/>
               {client.budget.toLocaleString('en-IN')}
+            </span>
+          </div>
+        </div>
+
+        {/* Requirement Summary */}
+        <div className="bg-white/90 backdrop-blur-3xl p-6 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100/50">
+              <Target size={20} />
+            </div>
+            <div>
+              <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Requirement Summary</h3>
+              <p className="text-sm font-bold text-slate-700">Detailed Preferences</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 flex flex-col items-center text-center">
+              <div className="text-indigo-500 mb-1.5 opacity-60">
+                <Target size={20} />
+              </div>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Property Type</span>
+              <span className="font-black text-slate-800 text-sm">{client.configuration?.category || 'Any Category'}</span>
+            </div>
+            
+            <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 flex flex-col items-center text-center">
+              <div className="text-purple-500 mb-1.5 opacity-60">
+                <Maximize size={20} />
+              </div>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Required Area</span>
+              <span className="font-black text-slate-800 text-sm">
+                {client.configuration?.required_area ? `${client.configuration.required_area} ft²` : '—'}
+              </span>
+            </div>
+          </div>
+
+          {client.configuration?.bhk?.length > 0 && (
+            <div className="mt-4 p-4 bg-blue-50/30 rounded-2xl border border-blue-100/50 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100/30">
+                <Bed size={18} />
+              </div>
+              <div>
+                <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-widest leading-none mb-1">Room Preferences</h4>
+                <p className="font-black text-blue-900 text-xs">
+                  {client.configuration.bhk.join(', ')} BHK
+                </p>
+              </div>
+            </div>
+          )}
+          
+          <div className="mt-4 p-4 bg-indigo-50/30 rounded-2xl border border-indigo-100/50 flex items-center justify-between">
+            <span className="text-[11px] font-black text-indigo-400 uppercase tracking-widest">Looking For:</span>
+            <span className="px-3 py-1 bg-white rounded-lg text-[10px] font-black text-indigo-700 border border-indigo-200">
+              {client.configuration?.property_type || 'General'} Listing
             </span>
           </div>
         </div>

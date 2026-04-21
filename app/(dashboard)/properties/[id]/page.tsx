@@ -1,10 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
-import Image from 'next/image'
 import Link from 'next/link'
-import { MapPin, IndianRupee, Bed, Maximize, Layers, Phone, User, ArrowLeft, ExternalLink } from 'lucide-react'
+import { MapPin, IndianRupee, Bed, Maximize, Layers, Phone, User, ExternalLink } from 'lucide-react'
 import { PropertyActions } from './PropertyActions'
 import { PropertyImageGallery } from './PropertyImageGallery'
+import { ClientBackButton } from '@/components/ClientBackButton'
+import { PrimaryShareButton } from './PrimaryShareButton'
 
 export default async function PropertyDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params
@@ -26,96 +27,164 @@ export default async function PropertyDetailsPage({ params }: { params: Promise<
   }
 
   const images = property.property_images?.map((img: any) => img.image_url) || []
-  const mainImage = images[0] || '/placeholder.png'
+  const config = property.configuration || {}
+  
+  // Stats helpers
+  const floorValue = config.total_floors ? `${config.current_floor || 0}/${config.total_floors}` : (config.floor || '—')
+  const bhkValue = config.bhk ? `${config.bhk} BHK` : '—'
+  const sizeValue = config.super_built_up ? `${config.super_built_up} ft²` : (config.size || '—')
 
   return (
-    <div className="pb-24 max-w-2xl mx-auto min-h-screen bg-gray-50/50">
-      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-3xl border-b border-gray-100 px-4 h-14 flex items-center justify-between">
-        <Link href="/properties" className="p-2 -ml-2 text-gray-500 hover:text-gray-900 transition-colors rounded-full hover:bg-gray-100">
-          <ArrowLeft size={20} />
-        </Link>
-        <span className="font-semibold text-gray-900 text-sm">Property Details</span>
+    <div className="fixed inset-0 flex flex-col overflow-hidden bg-[#111220]" style={{ height: '100dvh' }}>
+      {/* Background Gradient Layer */}
+      <div className="absolute inset-0 z-0" style={{ background: 'linear-gradient(165deg, #111220 0%, #0c0d1b 40%, #110d1e 100%)' }} />
+
+      {/* ─── Header (Glassmorphic) ─── */}
+      <header 
+        className="relative z-10 flex items-center justify-between px-5 shrink-0"
+        style={{ 
+          height: '60px',
+          background: 'rgba(30, 30, 45, 0.4)',
+          backdropFilter: 'blur(40px)',
+          WebkitBackdropFilter: 'blur(40px)',
+          borderBottom: '1px solid rgba(187, 195, 255, 0.08)'
+        }}
+      >
+        <ClientBackButton 
+          className="flex items-center justify-center rounded-full transition-all active:scale-90"
+          style={{ 
+            width: '40px', height: '40px',
+            background: 'rgba(187, 195, 255, 0.12)',
+            color: '#bbc3ff',
+            border: '1px solid rgba(187, 195, 255, 0.2)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)'
+          }}
+        />
+        <div className="flex flex-col items-center">
+          <span className="font-black tracking-[0.2em] uppercase text-[0.65rem] text-indigo-100/90">
+            {config.property_type || 'Property'}
+          </span>
+          <span className="text-[10px] font-bold text-indigo-400">{config.category || 'Listing'}</span>
+        </div>
         <PropertyActions property={property} />
       </header>
 
-      <PropertyImageGallery images={images} propertyType={property.type} />
-
-      <div className="p-5 space-y-6">
-        <div>
-          <div className="flex items-center text-gray-900 font-bold text-2xl tracking-tight mb-2">
-            <IndianRupee size={24} className="mr-0.5" />
-            {property.price.toLocaleString('en-IN')}
-          </div>
-          <div className="flex items-start text-gray-500 text-base font-medium">
-            <MapPin size={18} className="mr-2 mt-0.5 shrink-0 text-gray-400" />
-            <span className="leading-relaxed">{property.address}</span>
-          </div>
+      {/* ─── Main Integrated Content ─── */}
+      <main className="relative z-10 flex-1 flex flex-col px-4 pt-3 pb-4 overflow-hidden">
+        
+        {/* 1. Dynamic Image Gallery (35% fixed) */}
+        <div className="h-[32vh] min-h-[220px] shrink-0 mb-4">
+          <PropertyImageGallery images={images} propertyType={property.type} />
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
-          <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
-            <Bed size={20} className="mb-2 text-blue-500" />
-            <span className="text-xs text-gray-500 font-medium mb-0.5">BHK</span>
-            <span className="font-semibold text-gray-900">{property.configuration?.bhk || '-'}</span>
-          </div>
-          <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
-            <Maximize size={20} className="mb-2 text-green-500" />
-            <span className="text-xs text-gray-500 font-medium mb-0.5">Area</span>
-            <span className="font-semibold text-gray-900">{property.configuration?.size || '-'}</span>
-          </div>
-          <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
-            <Layers size={20} className="mb-2 text-purple-500" />
-            <span className="text-xs text-gray-500 font-medium mb-0.5">Floor</span>
-            <span className="font-semibold text-gray-900">{property.configuration?.floor || '-'}</span>
-          </div>
-        </div>
-
-        {property.description && (
-          <div className="space-y-2 pt-2">
-            <h3 className="font-semibold text-gray-900">Description</h3>
-            <p className="text-gray-600 text-sm leading-relaxed bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
-              {property.description}
-            </p>
-          </div>
-        )}
-
-        <div className="pt-2">
-          <h3 className="font-semibold text-gray-900 mb-3">Owner Details</h3>
-          <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center border border-gray-100">
-                <User size={18} className="text-gray-500" />
+        {/* 2. Primary Pricing & Address */}
+        <div className="shrink-0 mb-4 px-1">
+          <div className="flex items-end justify-between gap-3">
+            <div className="flex-1">
+              <div className="flex items-baseline gap-1" style={{ color: '#e2e0f5' }}>
+                <IndianRupee size={26} className="text-indigo-400" />
+                <span className="font-black text-3xl sm:text-4xl tracking-tighter">
+                  {property.price.toLocaleString('en-IN')}
+                </span>
+                {config.price_per_sqft && (
+                  <span className="ml-2 text-[10px] font-black px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
+                    ₹{config.price_per_sqft}/ft²
+                  </span>
+                )}
               </div>
-              <div>
-                <div className="text-xs text-gray-500 font-medium">Name</div>
-                <div className="font-semibold text-gray-900">{property.owner_name}</div>
+              <div className="flex items-start mt-2 text-[#908f9d]">
+                <MapPin size={16} className="mr-2 mt-0.5 shrink-0 text-indigo-500/60" />
+                <span className="text-sm leading-tight font-medium line-clamp-1">{property.address}</span>
               </div>
             </div>
             
-            <a href={`tel:${property.owner_phone}`} className="flex items-center gap-3 active:bg-gray-50 p-2 -mx-2 rounded-xl transition-colors">
-              <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center border border-green-100 text-green-600">
-                <Phone size={18} />
-              </div>
-              <div>
-                <div className="text-xs text-gray-500 font-medium">Mobile (Call)</div>
-                <div className="font-semibold text-gray-900">{property.owner_phone}</div>
-              </div>
-            </a>
+            <div 
+              className="px-4 py-1.5 rounded-full text-[11px] font-black tracking-widest uppercase"
+              style={{
+                background: property.type === 'Sale' 
+                  ? 'linear-gradient(135deg, rgba(0,38,184,0.6), rgba(59,90,254,0.3))'
+                  : 'linear-gradient(135deg, rgba(114,17,153,0.6), rgba(235,178,255,0.3))',
+                color: property.type === 'Sale' ? '#d9e0ff' : '#f5e1ff',
+                border: `1px solid ${property.type === 'Sale' ? 'rgba(187,195,255,0.2)' : 'rgba(235,178,255,0.2)'}`,
+              }}
+            >
+              {property.type}
+            </div>
           </div>
         </div>
 
-        {property.google_map_link && (
-          <a
-            href={property.google_map_link} 
-            target="_blank" 
-            rel="noreferrer"
-            className="flex items-center justify-between p-4 bg-blue-50 text-blue-700 rounded-2xl font-semibold hover:bg-blue-100 transition-colors"
+        {/* 3. Stats Grid (Compact & Bold) */}
+        <div className="shrink-0 grid grid-cols-4 gap-2 mb-3">
+          {[
+            { icon: <Bed size={22} strokeWidth={2.5} />, label: 'BHK', value: bhkValue, accent: '#bbc3ff' },
+            { icon: <Maximize size={22} strokeWidth={2.5} />, label: 'Area', value: sizeValue, accent: '#ebb2ff' },
+            { icon: <Layers size={22} strokeWidth={2.5} />, label: 'Floor', value: floorValue, accent: '#c0c5e4' },
+            { icon: <ExternalLink size={22} strokeWidth={2.5} />, label: 'Facing', value: config.facing || '—', accent: '#a5b4fc' },
+          ].map((stat) => (
+            <div 
+              key={stat.label}
+              className="flex flex-col items-center justify-center py-3 rounded-2xl"
+              style={{ 
+                background: 'rgba(50, 52, 75, 0.4)',
+                backdropFilter: 'blur(20px)',
+                border: '1px solid rgba(187, 195, 255, 0.08)',
+              }}
+            >
+              <div style={{ color: stat.accent }}>{stat.icon}</div>
+              <span className="text-[9px] font-bold mt-1.5 uppercase tracking-wider opacity-60">{stat.label}</span>
+              <span className="font-black text-xs mt-0.5" style={{ color: '#e2e0f5' }}>{stat.value}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* 4. Primary Share Action (New Body Position) */}
+        <div className="shrink-0 mb-4">
+          <PrimaryShareButton property={property} />
+        </div>
+
+        {/* 5. Description Area (The Filler) */}
+        <div className="flex-1 flex flex-col min-h-0">
+          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400/80 mb-2 pl-1">Description</h3>
+          <div 
+            className="flex-1 overflow-y-auto rounded-2xl p-4 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-indigo-500/10 [&::-webkit-scrollbar-thumb]:rounded-full"
+            style={{ 
+              background: 'rgba(40, 41, 56, 0.35)',
+              border: '1px solid rgba(187, 195, 255, 0.05)',
+              backdropFilter: 'blur(10px)'
+            }}
           >
-            <span className="flex items-center gap-2"><MapPin size={18} /> Open in Google Maps</span>
-            <ExternalLink size={18} />
-          </a>
-        )}
-      </div>
+            <p className="text-sm leading-relaxed text-[#c7c5d4] font-medium">
+              {property.description}
+            </p>
+          </div>
+        </div>
+      </main>
+
+      {/* ─── Footer Action Bar (Fixed Elite Dock) ─── */}
+      <footer className="relative z-10 grid grid-cols-2 gap-3 px-5 py-5 shrink-0 bg-[#0c0d1b]/80 backdrop-blur-3xl border-t border-white/5">
+        <a 
+          href={property.google_map_link || '#'}
+          target="_blank"
+          className="flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 border border-white/10"
+          style={{ background: 'rgba(255,255,255,0.03)', color: '#bbc3ff' }}
+        >
+          <MapPin size={16} />
+          Location
+        </a>
+        
+        <a 
+          href={`tel:${property.owner_phone}`}
+          className="flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-2xl shadow-indigo-600/30"
+          style={{
+            background: 'linear-gradient(135deg, #0026b8 0%, #3D5AFE 100%)',
+            color: '#ffffff',
+          }}
+        >
+          <Phone size={16} />
+          Call Owner
+        </a>
+      </footer>
     </div>
   )
 }

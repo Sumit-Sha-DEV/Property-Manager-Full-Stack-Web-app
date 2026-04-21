@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from 'sonner'
@@ -15,13 +15,26 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "SS Property Consultancy",
-  description: "Property and Client Management Tool",
+  description: "Premium Property and Client Management Tool",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
     title: "SS Property",
   },
+  other: {
+    "mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-status-bar-style": "black-translucent"
+  }
+};
+
+export const viewport: Viewport = {
+  themeColor: "#4f46e5",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
