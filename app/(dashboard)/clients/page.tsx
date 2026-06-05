@@ -1,18 +1,19 @@
-import { createClient } from '@/lib/supabase/server'
 import { ClientCard } from '@/components/ClientCard'
-import { AddClientModal } from './AddClientModal'
 import { Suspense } from 'react'
 import { ClientListSkeleton } from '@/components/skeletons/ClientListSkeleton'
+import { getClientsList } from '@/actions/optimized-queries'
+import dynamic from 'next/dynamic'
+
+const AddClientModal = dynamic(() => import('./AddClientModal').then(mod => mod.AddClientModal))
+
+// ISR: Revalidate every 30 seconds for fresh data
+export const revalidate = 30
 
 async function ClientList() {
-  const supabase = await createClient()
-  
-  const { data: clients } = await supabase
-    .from('clients')
-    .select('*')
-    .order('created_at', { ascending: false })
+  // Use optimized query with pagination
+  const { data: clients, error } = await getClientsList(50, 0)
 
-  if (!clients || clients.length === 0) {
+  if (error || !clients || clients.length === 0) {
     return (
       <div className="text-center py-20 bg-white rounded-2xl border border-gray-100 shadow-sm">
         <p className="text-gray-500 font-medium">No clients yet.</p>

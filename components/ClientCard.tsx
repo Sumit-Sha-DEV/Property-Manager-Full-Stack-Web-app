@@ -2,37 +2,46 @@
 
 import { User, Phone, MapPin, IndianRupee, Trash2, Edit2, Maximize } from 'lucide-react'
 import { deleteClient } from '@/actions/client.actions'
-import { useState } from 'react'
+import { useState, useCallback, memo } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { EditClientModal } from '@/app/(dashboard)/clients/EditClientModal'
+import dynamic from 'next/dynamic'
+import { DeleteConfirmModal } from './DeleteConfirmModal'
 
-export function ClientCard({ client }: { client: any }) {
+const EditClientModal = dynamic(() => import('@/app/(dashboard)/clients/EditClientModal').then(mod => mod.EditClientModal), {
+  ssr: false
+})
+
+function ClientCardComponent({ client }: { client: any }) {
   const [isDeleting, setIsDeleting] = useState(false)
   const [isEditOpen, setIsEditOpen] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const router = useRouter()
 
-  const handleDelete = async (e: React.MouseEvent) => {
+  const handleDeleteClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
-    if (confirm('Are you sure you want to delete this client?')) {
-      setIsDeleting(true)
-      try {
-        await deleteClient(client.id)
-      } catch (err) {
-        alert('Failed to delete client')
-        setIsDeleting(false)
-      }
-    }
-  }
+    setIsDeleteModalOpen(true)
+  }, [])
 
-  const handleEditClick = (e: React.MouseEvent) => {
+  const handleConfirmDelete = useCallback(async () => {
+    setIsDeleting(true)
+    try {
+      await deleteClient(client.id)
+      setIsDeleteModalOpen(false)
+    } catch (err) {
+      console.error('Failed to delete client:', err)
+      setIsDeleting(false)
+    }
+  }, [client.id])
+
+  const handleEditClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
     setIsEditOpen(true)
-  }
+  }, [])
 
-  const handleCardClick = () => {
+  const handleCardClick = useCallback(() => {
     router.push(`/clients/${client.id}`)
-  }
+  }, [router, client.id])
 
   return (
     <>
@@ -53,6 +62,7 @@ export function ClientCard({ client }: { client: any }) {
                   className="object-cover"
                   sizes="32px"
                   unoptimized
+                  loading="lazy"
                 />
               </div>
               <span className="line-clamp-1">{client.name}</span>
@@ -72,7 +82,7 @@ export function ClientCard({ client }: { client: any }) {
                 <Edit2 size={13} />
               </button>
               <button 
-                onClick={handleDelete}
+                onClick={handleDeleteClick}
                 disabled={isDeleting}
                 className="p-1.5 text-slate-400 hover:text-rose-500 rounded-full hover:bg-white shadow-sm transition-colors disabled:opacity-50"
                 title="Delete Client"
@@ -133,6 +143,29 @@ export function ClientCard({ client }: { client: any }) {
           onClose={() => setIsEditOpen(false)} 
         />
       )}
+      <DeleteConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleConfirmDelete}
+        isLoading={isDeleting}
+        title="Delete Client"
+        description={`Are you sure you want to delete ${client.name}? This client record will be permanently removed from your contacts.`}
+      />
     </>
   )
 }
+
+// Memoize component to prevent unnecessary re-renders
+export const ClientCard = memo(ClientCardComponent, (prevProps, nextProps) => {
+  const prev = prevProps.client
+  const next = nextProps.client
+
+  return prev.id === next.id &&
+         prev.name === next.name &&
+         prev.phone === next.phone &&
+         prev.requirement === next.requirement &&
+         prev.budget === next.budget &&
+         prev.notes === next.notes &&
+         JSON.stringify(prev.preferred_locations) === JSON.stringify(next.preferred_locations) &&
+         JSON.stringify(prev.configuration) === JSON.stringify(next.configuration)
+})

@@ -16,11 +16,7 @@ interface PropertyConfig {
   kattha?: string;
 }
 
-export async function sharePropertyDetails(property: any) {
-  const config: PropertyConfig = property.configuration || {};
-  
-  // 1. Compose the professional message (Privacy-First)
-  // Excludes: owner_name, owner_phone, google_map_link
+function composePropertyMessage(property: any, config: PropertyConfig): string {
   let message = `🏢 *${config.property_type || 'Property'} for ${property.type}*\n`;
   message += `📍 ${config.category || 'Listing'} at ${property.address.split(',')[0]}...\n\n`; // Only first part of address for privacy
   
@@ -45,6 +41,12 @@ export async function sharePropertyDetails(property: any) {
   }
 
   message += `\n✨ _Shared via SS Real Estate Manager_`;
+  return message;
+}
+
+export async function sharePropertyDetails(property: any) {
+  const config: PropertyConfig = property.configuration || {};
+  const message = composePropertyMessage(property, config);
 
   // 2. Fetch Images as Blobs for Stack Sharing
   const images: { image_url: string }[] = property.property_images || [];
@@ -92,12 +94,81 @@ export async function sharePropertyDetails(property: any) {
       return { success: false, cancelled: true };
     }
   } else {
-    // Desktop Fallback: Copy to clipboard?
+    // Desktop Fallback: Copy to clipboard
     try {
       await navigator.clipboard.writeText(message);
       return { success: true, copied: true };
     } catch (e) {
       return { success: false, error: 'Sharing not supported on this device' };
     }
+  }
+}
+
+/**
+ * Generate WhatsApp share link for property with images/videos
+ * Opens WhatsApp with pre-filled property details message
+ */
+export function shareToWhatsApp(property: any) {
+  const config: PropertyConfig = property.configuration || {};
+  const message = composePropertyMessage(property, config);
+  
+  // Encode message for URL
+  const encodedMessage = encodeURIComponent(message);
+  
+  // WhatsApp API link format
+  const whatsappLink = `https://wa.me/?text=${encodedMessage}`;
+  
+  // Open WhatsApp (works on mobile, opens web on desktop)
+  window.open(whatsappLink, '_blank');
+  
+  return { success: true, opened: true };
+}
+
+/**
+ * Share property images/videos with caption to WhatsApp
+ * For mobile devices, opens WhatsApp and allows user to select images
+ */
+export function shareMediaToWhatsApp(property: any) {
+  const config: PropertyConfig = property.configuration || {};
+  const images: { image_url: string }[] = property.property_images || [];
+  const videos: { video_url: string }[] = property.property_videos || [];
+  
+  // Compose media-focused message
+  let message = `🏢 *${config.property_type || 'Property'} for ${property.type}*\n`;
+  message += `📍 ${config.category || 'Listing'}\n`;
+  message += `💰 ₹${property.price.toLocaleString('en-IN')}\n`;
+  
+  if (images.length > 0) {
+    message += `📸 ${images.length} photos • `;
+  }
+  if (videos.length > 0) {
+    message += `🎥 ${videos.length} videos`;
+  }
+  
+  message += `\n\n✨ View full details at SS Property Manager`;
+  
+  const encodedMessage = encodeURIComponent(message);
+  const whatsappLink = `https://wa.me/?text=${encodedMessage}`;
+  
+  window.open(whatsappLink, '_blank');
+  
+  return { success: true, mediaCount: images.length + videos.length };
+}
+
+/**
+ * Copy property share link to clipboard
+ * Useful for sharing via WhatsApp, email, or other platforms
+ */
+export function copyPropertyShareLink(property: any): { success: boolean; link?: string } {
+  const config: PropertyConfig = property.configuration || {};
+  const message = composePropertyMessage(property, config);
+  
+  try {
+    // Create a text that can be easily shared
+    navigator.clipboard.writeText(message);
+    return { success: true, link: message };
+  } catch (e) {
+    console.error('Failed to copy:', e);
+    return { success: false };
   }
 }

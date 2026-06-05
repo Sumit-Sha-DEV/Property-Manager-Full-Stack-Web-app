@@ -1,21 +1,19 @@
-import { createClient } from '@/lib/supabase/server'
-import { PropertyCard } from '@/components/PropertyCard'
-import { AddPropertyModal } from './AddPropertyModal'
+import { PropertyListWithSearch } from '@/components/PropertyListWithSearch'
 import { Suspense } from 'react'
 import { PropertyListSkeleton } from '@/components/skeletons/PropertyListSkeleton'
+import { getPropertiesList } from '@/actions/optimized-queries'
+import dynamic from 'next/dynamic'
+
+const AddPropertyModal = dynamic(() => import('./AddPropertyModal').then(mod => mod.AddPropertyModal))
+
+// ISR: Revalidate every 30 seconds for fresh data
+export const revalidate = 30
 
 async function PropertyList() {
-  const supabase = await createClient()
-  
-  const { data: properties } = await supabase
-    .from('properties')
-    .select(`
-      *,
-      property_images ( image_url )
-    `)
-    .order('created_at', { ascending: false })
+  // Use optimized query with pagination
+  const { data: properties, error } = await getPropertiesList(50, 0)
 
-  if (!properties || properties.length === 0) {
+  if (error || !properties || properties.length === 0) {
     return (
       <div className="text-center py-20 bg-white rounded-2xl border border-gray-100 shadow-sm">
         <p className="text-gray-500 font-medium">No properties yet.</p>
@@ -24,13 +22,7 @@ async function PropertyList() {
     )
   }
 
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-      {properties.map((prop, index) => (
-        <PropertyCard key={prop.id} property={prop} priority={index < 4} />
-      ))}
-    </div>
-  )
+  return <PropertyListWithSearch properties={properties} />
 }
 
 export default function PropertiesPage() {

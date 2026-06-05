@@ -15,21 +15,32 @@ function getCloudinaryPublicId(url: string): string | null {
   }
 }
 
-async function uploadToCloudinary(file: File): Promise<string> {
+async function uploadToCloudinary(file: File, resourceType: 'auto' | 'image' | 'video' = 'auto'): Promise<{ secure_url: string; duration?: number }> {
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
 
   return new Promise((resolve, reject) => {
-    cloudinary.uploader.upload_stream(
-      { folder: 'property_manager' },
+    const uploadStream = cloudinary.uploader.upload_stream(
+      { 
+        folder: 'property_manager',
+        resource_type: resourceType,
+        eager: resourceType === 'video' ? [
+          { width: 300, height: 300, crop: 'fill', format: 'jpg' }
+        ] : undefined,
+        eager_async: resourceType === 'video'
+      },
       (error, result) => {
         if (error || !result) {
           reject(error || new Error('Upload failed'));
         } else {
-          resolve(result.secure_url);
+          resolve({
+            secure_url: result.secure_url,
+            duration: result.duration
+          });
         }
       }
-    ).end(buffer);
+    );
+    uploadStream.end(buffer);
   });
 }
 
@@ -79,13 +90,15 @@ export async function createProperty(formData: FormData) {
   }
 
   const imageFiles = formData.getAll('images') as File[];
+  const videoFiles = formData.getAll('videos') as File[];
   const imageUrls: string[] = [];
 
+  // Upload images
   for (const file of imageFiles) {
     if (file.size > 0 && file.type.startsWith('image/')) {
       try {
-        const url = await uploadToCloudinary(file);
-        imageUrls.push(url);
+        const result = await uploadToCloudinary(file, 'image');
+        imageUrls.push(result.secure_url);
       } catch (err) {
         console.error('Image upload failed', err);
       }
@@ -100,13 +113,56 @@ export async function createProperty(formData: FormData) {
     await supabase.from('property_images').insert(imageInserts);
   }
 
+  // Upload videos
+  const videoData: any[] = [];
+  for (const file of videoFiles) {
+    if (file && file.size > 0 && file.type.startsWith('video/')) {
+      try {
+        console.log(`[VIDEO UPLOAD] Starting upload: ${file.name} (${file.size} bytes)`);
+        const result = await uploadToCloudinary(file, 'video');
+        console.log(`[VIDEO UPLOAD] Success: ${file.name}`);
+        videoData.push({
+          property_id: property.id,
+          video_url: result.secure_url,
+          duration_seconds: result.duration || null,
+          thumbnail_url: null
+        });
+      } catch (err) {
+        console.error(`[VIDEO UPLOAD] Failed for ${file.name}:`, err);
+        // Continue with other files even if one fails
+      }
+    }
+  }
+
+  if (videoData.length > 0) {
+    try {
+      console.log(`[DB INSERT] Inserting ${videoData.length} videos into database`);
+      const { error: videoError } = await supabase.from('property_videos').insert(videoData);
+      if (videoError) {
+        console.error('[DB INSERT] Error inserting videos:', videoError);
+        throw videoError;
+      }
+      console.log('[DB INSERT] Videos inserted successfully');
+    } catch (err) {
+      console.error('[DB INSERT] Failed to insert videos:', err);
+      // Don't throw - videos are optional
+    }
+  }
+
   revalidatePath('/properties');
   return property;
 }
 
 export async function deleteProperty(id: string) {
   const supabase = await createClient();
-  const { error } = await supabase.from('properties').delete().eq('id', id);
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Unauthorized');
+
+  const { error } = await supabase
+    .from('properties')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', user.id);
   if (error) throw new Error(error.message);
   revalidatePath('/properties');
 }
@@ -159,13 +215,14 @@ export async function updateProperty(id: string, formData: FormData) {
 
   // Handle images if provided in edit (Append simple logic, image additions only)
   const imageFiles = formData.getAll('images') as File[];
+  const videoFiles = formData.getAll('videos') as File[];
   const imageUrls: string[] = [];
 
   for (const file of imageFiles) {
     if (file && file.size > 0 && file.type && file.type.startsWith('image/')) {
       try {
-        const url = await uploadToCloudinary(file);
-        imageUrls.push(url);
+        const result = await uploadToCloudinary(file, 'image');
+        imageUrls.push(result.secure_url);
       } catch (err) {
         console.error('Image upload failed', err);
       }
@@ -178,6 +235,40 @@ export async function updateProperty(id: string, formData: FormData) {
       image_url: url
     }));
     await supabase.from('property_images').insert(imageInserts);
+  }
+
+  // Upload videos
+  const videoData: any[] = [];
+  for (const file of videoFiles) {
+    if (file && file.size > 0 && file.type && file.type.startsWith('video/')) {
+      try {
+        console.log(`[VIDEO UPLOAD] Starting upload: ${file.name} (${file.size} bytes)`);
+        const result = await uploadToCloudinary(file, 'video');
+        console.log(`[VIDEO UPLOAD] Success: ${file.name}`);
+        videoData.push({
+          property_id: property.id,
+          video_url: result.secure_url,
+          duration_seconds: result.duration || null,
+          thumbnail_url: null
+        });
+      } catch (err) {
+        console.error(`[VIDEO UPLOAD] Failed for ${file.name}:`, err);
+      }
+    }
+  }
+
+  if (videoData.length > 0) {
+    try {
+      console.log(`[DB INSERT] Inserting ${videoData.length} videos into database`);
+      const { error: videoError } = await supabase.from('property_videos').insert(videoData);
+      if (videoError) {
+        console.error('[DB INSERT] Error inserting videos:', videoError);
+      } else {
+        console.log('[DB INSERT] Videos inserted successfully');
+      }
+    } catch (err) {
+      console.error('[DB INSERT] Failed to insert videos:', err);
+    }
   }
 
   // Delete images the user marked for removal
@@ -200,6 +291,30 @@ export async function updateProperty(id: string, formData: FormData) {
             await cloudinary.uploader.destroy(publicId);
           } catch (e) {
             console.error('Cloudinary delete failed for:', publicId, e);
+          }
+        }
+      }
+    }
+  }
+
+  // Delete videos the user marked for removal
+  const videosToDeleteRaw = formData.get('videosToDelete') as string;
+  if (videosToDeleteRaw) {
+    const videosToDelete: string[] = JSON.parse(videosToDeleteRaw);
+    if (videosToDelete.length > 0) {
+      await supabase
+        .from('property_videos')
+        .delete()
+        .in('video_url', videosToDelete)
+        .eq('property_id', id);
+
+      for (const url of videosToDelete) {
+        const publicId = getCloudinaryPublicId(url);
+        if (publicId) {
+          try {
+            await cloudinary.uploader.destroy(publicId, { resource_type: 'video' });
+          } catch (e) {
+            console.error('Cloudinary video delete failed for:', publicId, e);
           }
         }
       }

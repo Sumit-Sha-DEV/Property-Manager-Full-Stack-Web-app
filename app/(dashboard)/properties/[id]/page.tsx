@@ -1,32 +1,28 @@
-import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { MapPin, IndianRupee, Bed, Maximize, Layers, Phone, User, ExternalLink } from 'lucide-react'
 import { PropertyActions } from './PropertyActions'
 import { PropertyImageGallery } from './PropertyImageGallery'
+import { PropertyVideoGallery } from './PropertyVideoGallery'
 import { ClientBackButton } from '@/components/ClientBackButton'
 import { PrimaryShareButton } from './PrimaryShareButton'
+import { getPropertyDetail } from '@/actions/optimized-queries'
+
+// ISR: Revalidate every 30 seconds
+export const revalidate = 30
 
 export default async function PropertyDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params
-  const supabase = await createClient()
 
-  // Verify auth
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return notFound()
-
-  // Fetch Property
-  const { data: property, error } = await supabase
-    .from('properties')
-    .select('*, property_images(image_url)')
-    .eq('id', resolvedParams.id)
-    .single()
+  // Use optimized query with selective fields
+  const { data: property, error } = await getPropertyDetail(resolvedParams.id)
 
   if (error || !property) {
     return notFound()
   }
 
   const images = property.property_images?.map((img: any) => img.image_url) || []
+  const videos = property.property_videos || []
   const config = property.configuration || {}
   
   // Stats helpers
@@ -77,6 +73,11 @@ export default async function PropertyDetailsPage({ params }: { params: Promise<
         <div className="h-[32vh] min-h-[220px] shrink-0 mb-4">
           <PropertyImageGallery images={images} propertyType={property.type} />
         </div>
+
+        {/* 1.5 Video Gallery (if available) */}
+        {videos.length > 0 && (
+          <PropertyVideoGallery videos={videos} />
+        )}
 
         {/* 2. Primary Pricing & Address */}
         <div className="shrink-0 mb-4 px-1">

@@ -1,23 +1,17 @@
-import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { MapPin, IndianRupee, Phone, User, ArrowLeft, Target, Wallet, FileText, Bed, Maximize } from 'lucide-react'
 import { ClientActions } from './ClientActions'
+import { getClientDetail } from '@/actions/optimized-queries'
+
+// ISR: Revalidate every 30 seconds
+export const revalidate = 30
 
 export default async function ClientDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params
-  const supabase = await createClient()
 
-  // Verify auth
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return notFound()
-
-  // Fetch Client
-  const { data: client, error } = await supabase
-    .from('clients')
-    .select('*')
-    .eq('id', resolvedParams.id)
-    .single()
+  // Use optimized query with selective fields
+  const { data: client, error } = await getClientDetail(resolvedParams.id)
 
   if (error || !client) {
     return notFound()

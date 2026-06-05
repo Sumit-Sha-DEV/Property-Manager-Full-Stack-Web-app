@@ -52,7 +52,14 @@ export async function createClientRecord(formData: FormData) {
 
 export async function deleteClient(id: string) {
   const supabase = await createClient();
-  const { error } = await supabase.from('clients').delete().eq('id', id);
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Unauthorized');
+
+  const { error } = await supabase
+    .from('clients')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', user.id);
   if (error) throw new Error(error.message);
   revalidatePath('/clients');
 }

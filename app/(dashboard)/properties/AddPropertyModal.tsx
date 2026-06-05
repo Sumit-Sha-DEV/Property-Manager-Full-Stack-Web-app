@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Plus, X, Calculator, IndianRupee, MapPin, Bed, Bath, Layers } from 'lucide-react'
+import { Plus, X, Calculator, IndianRupee, MapPin, Bed, Bath, Layers, Video, Film } from 'lucide-react'
 import { Modal } from '@/components/Modal'
 import { createProperty } from '@/actions/property.actions'
 import { numberToWords } from '@/lib/utils/formatters'
@@ -21,6 +21,7 @@ export function AddPropertyModal() {
   const [isOpen, setIsOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [images, setImages] = useState<File[]>([])
+  const [videos, setVideos] = useState<File[]>([])
   const [price, setPrice] = useState<string>('')
   
   // Dynamic Structure States
@@ -38,6 +39,7 @@ export function AddPropertyModal() {
   const [kattha, setKattha] = useState<string>('0')
 
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const videoInputRef = useRef<HTMLInputElement>(null)
 
   // Calculate Price Per Sqft
   useEffect(() => {
@@ -68,18 +70,38 @@ export function AddPropertyModal() {
     }
   }
 
+  const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const newFiles = Array.from(e.target.files)
+      setVideos(prev => [...prev, ...newFiles].slice(0, 5))
+      if (videoInputRef.current) videoInputRef.current.value = ''
+    }
+  }
+
   const removeImage = (indexToRemove: number) => {
     setImages(prev => prev.filter((_, index) => index !== indexToRemove))
   }
 
+  const removeVideo = (indexToRemove: number) => {
+    setVideos(prev => prev.filter((_, index) => index !== indexToRemove))
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    
+    // Validate: At least 1 image OR 1 video is required
+    if (images.length === 0 && videos.length === 0) {
+      toast.error('Please add at least one image or video', { id: 'validation' })
+      return
+    }
+
     const formElement = e.currentTarget
     const formData = new FormData(formElement)
     
     // Optimistic UI: Close and Toast instantly
     setIsOpen(false)
     const toastId = toast.loading('Publishing elite property listing...')
+    setLoading(true)
     
     try {
       const config: any = {
@@ -112,14 +134,31 @@ export function AddPropertyModal() {
 
       formData.set('config', JSON.stringify(config))
       formData.delete('images')
-      images.forEach(img => formData.append('images', img))
+      formData.delete('videos')
+      
+      // Add images to form
+      if (images.length > 0) {
+        images.forEach(img => formData.append('images', img))
+      }
+      
+      // Add videos to form
+      if (videos.length > 0) {
+        videos.forEach(vid => formData.append('videos', vid))
+      }
+      
+      console.log(`Uploading: ${images.length} images, ${videos.length} videos`)
       
       await createProperty(formData)
-      toast.success('Property listing is live!', { id: toastId })
+      toast.success('Property listing is live! 🎉', { id: toastId })
       setImages([])
+      setVideos([])
       formElement.reset()
     } catch (err: any) {
+      console.error('Upload error:', err)
       toast.error(err.message || 'Failed to publish property', { id: toastId })
+      setIsOpen(true) // Reopen modal so user can fix
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -133,7 +172,7 @@ export function AddPropertyModal() {
       </button>
 
       <Modal isOpen={isOpen} onClose={() => setIsOpen(false)} title="Add New Property Listing">
-        <form onSubmit={handleSubmit} className="space-y-6 max-h-[80vh] overflow-y-auto px-1 pb-4">
+        <form onSubmit={handleSubmit} className="space-y-4 max-h-[85vh] overflow-y-auto px-1 pb-4 md:space-y-6">
           
           {/* Owner Details Section */}
           <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-100 space-y-4">
@@ -352,32 +391,71 @@ export function AddPropertyModal() {
           </div>
 
           {/* Image Upload Section */}
-          <div>
-            <label className="block text-[11px] font-bold text-slate-700 mb-2 uppercase tracking-widest">Property Photos (Max 15)</label>
-            <div className="grid grid-cols-4 gap-2 mb-3">
+          <div className="bg-gradient-to-br from-blue-50 to-indigo-50/50 p-3 md:p-4 rounded-2xl border border-blue-100/50">
+            <label className="block text-[10px] md:text-[11px] font-bold text-slate-700 mb-2 uppercase tracking-widest flex items-center gap-2">
+              <Film size={14} className="text-indigo-600" />
+              Property Photos (Max 15)
+            </label>
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 mb-3">
               {images.map((img, index) => (
-                <div key={index} className="relative aspect-square rounded-xl overflow-hidden shadow-sm border border-slate-200">
+                <div key={index} className="relative aspect-square rounded-lg overflow-hidden shadow-sm border border-blue-200 bg-white">
                   <img src={URL.createObjectURL(img)} alt="Preview" className="w-full h-full object-cover" />
-                  <button type="button" onClick={() => removeImage(index)} className="absolute top-1 right-1 bg-white/90 p-1 rounded-full text-rose-500 shadow-sm"><X size={12} /></button>
+                  <button type="button" onClick={() => removeImage(index)} className="absolute top-0.5 right-0.5 bg-white/90 p-1 rounded-full text-rose-500 shadow-sm hover:bg-white active:scale-90">
+                    <X size={12} />
+                  </button>
+                  <span className="absolute bottom-1 left-1 text-[7px] font-bold bg-black/50 text-white px-1 rounded">Img</span>
                 </div>
               ))}
               {images.length < 15 && (
                 <div 
                   onClick={() => fileInputRef.current?.click()}
-                  className="aspect-square border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center cursor-pointer text-slate-400 hover:bg-slate-50 transition-colors"
+                  className="aspect-square border-2 border-dashed border-indigo-300 rounded-lg flex flex-col items-center justify-center cursor-pointer text-indigo-400 hover:bg-indigo-50 active:scale-95 transition-all"
                 >
-                  <Plus size={20} />
-                  <span className="text-[10px] mt-1">Add</span>
+                  <Plus size={18} />
+                  <span className="text-[9px] mt-1 font-bold">Add</span>
                 </div>
               )}
             </div>
             <input ref={fileInputRef} type="file" multiple accept="image/*" onChange={handleImageChange} className="hidden" />
+            <p className="text-[8px] text-slate-500 italic">{images.length}/15 photos added</p>
+          </div>
+
+          {/* Video Upload Section */}
+          <div className="bg-gradient-to-br from-purple-50 to-pink-50/50 p-3 md:p-4 rounded-2xl border border-purple-100/50">
+            <label className="block text-[10px] md:text-[11px] font-bold text-slate-700 mb-2 uppercase tracking-widest flex items-center gap-2">
+              <Video size={14} className="text-purple-600" />
+              Property Videos (Max 5) - Optional
+            </label>
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 mb-3">
+              {videos.map((vid, index) => (
+                <div key={index} className="relative aspect-square rounded-lg overflow-hidden shadow-sm border border-purple-200 bg-white flex items-center justify-center">
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center">
+                    <Video size={20} className="text-purple-600" />
+                  </div>
+                  <button type="button" onClick={() => removeVideo(index)} className="absolute top-0.5 right-0.5 bg-white/90 p-1 rounded-full text-rose-500 shadow-sm hover:bg-white active:scale-90">
+                    <X size={12} />
+                  </button>
+                  <span className="absolute bottom-1 left-1 text-[7px] font-bold bg-black/50 text-white px-1 rounded">Video</span>
+                </div>
+              ))}
+              {videos.length < 5 && (
+                <div 
+                  onClick={() => videoInputRef.current?.click()}
+                  className="aspect-square border-2 border-dashed border-purple-300 rounded-lg flex flex-col items-center justify-center cursor-pointer text-purple-400 hover:bg-purple-50 active:scale-95 transition-all"
+                >
+                  <Plus size={18} />
+                  <span className="text-[9px] mt-1 font-bold">Add</span>
+                </div>
+              )}
+            </div>
+            <input ref={videoInputRef} type="file" multiple accept="video/*" onChange={handleVideoChange} className="hidden" />
+            <p className="text-[8px] text-slate-500 italic">{videos.length}/5 videos added • Formats: MP4, WebM, MOV</p>
           </div>
 
           <button
             type="submit"
-            disabled={loading || images.length === 0}
-            className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-200 hover:bg-indigo-700 disabled:opacity-50 transition-all active:scale-95"
+            disabled={loading || (images.length === 0 && videos.length === 0)}
+            className="w-full py-3 md:py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs md:text-sm uppercase tracking-widest shadow-xl shadow-indigo-200 hover:bg-indigo-700 disabled:opacity-50 transition-all active:scale-95"
           >
             {loading ? 'Processing Property...' : 'List Property Now'}
           </button>

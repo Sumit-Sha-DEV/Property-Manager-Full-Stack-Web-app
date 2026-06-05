@@ -1,29 +1,34 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, memo, useCallback } from 'react'
 import Image from 'next/image'
 import { Images, Maximize2 } from 'lucide-react'
 import { PropertyFullscreenGallery } from './PropertyFullscreenGallery'
+import { getHeroImageUrl, generateImageSrcSet } from '@/lib/cloudinary-optimizer'
 
-export function PropertyImageGallery({ images, propertyType }: { images: string[], propertyType: string }) {
+function PropertyImageGalleryComponent({ images, propertyType }: { images: string[], propertyType: string }) {
   const [activeIndex, setActiveIndex] = useState(0)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const sliderRef = useRef<HTMLDivElement>(null)
 
-  const handleScroll = () => {
+  const handleScroll = useCallback(() => {
     if (!sliderRef.current) return
     const scrollPosition = sliderRef.current.scrollLeft
     const width = sliderRef.current.offsetWidth
     const newIndex = Math.round(scrollPosition / width)
     if (newIndex !== activeIndex) setActiveIndex(newIndex)
-  }
+  }, [activeIndex])
 
-  const handleThumbnailClick = (index: number) => {
+  const handleThumbnailClick = useCallback((index: number) => {
     if (!sliderRef.current) return
     const width = sliderRef.current.offsetWidth
     sliderRef.current.scrollTo({ left: width * index, behavior: 'smooth' })
     setActiveIndex(index)
-  }
+  }, [])
+
+  const handleImageClick = useCallback(() => {
+    setIsFullscreen(true)
+  }, [])
 
   if (!images || images.length === 0) {
     return (
@@ -43,6 +48,10 @@ export function PropertyImageGallery({ images, propertyType }: { images: string[
     )
   }
 
+  const currentImage = images[activeIndex]
+  const optimizedImageUrl = getHeroImageUrl(currentImage)
+  const imageSrcSet = generateImageSrcSet(currentImage, 1920)
+
   return (
     <>
       <div className="relative rounded-[24px] overflow-hidden group" style={{ height: '196px' }}>
@@ -52,17 +61,17 @@ export function PropertyImageGallery({ images, propertyType }: { images: string[
           onScroll={handleScroll}
           className="w-full h-full flex overflow-x-auto snap-x snap-mandatory cursor-pointer"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-          onClick={() => setIsFullscreen(true)}
+          onClick={handleImageClick}
         >
           {images.map((img, idx) => (
             <div key={idx} className="w-full h-full shrink-0 snap-center relative">
-              <Image
-                src={img}
+              <img
+                src={idx === activeIndex ? optimizedImageUrl : img}
                 alt={`Property image ${idx + 1}`}
-                fill
-                className="object-cover"
+                className="object-cover w-full h-full"
                 sizes="100vw"
-                priority={idx === 0}
+                srcSet={idx === activeIndex ? imageSrcSet : undefined}
+                loading={idx === 0 ? 'eager' : 'lazy'}
               />
               {/* Dark gradient vignette for text contrast */}
               <div 
@@ -147,3 +156,6 @@ export function PropertyImageGallery({ images, propertyType }: { images: string[
     </>
   )
 }
+
+// Memoize component to prevent unnecessary re-renders
+export const PropertyImageGallery = memo(PropertyImageGalleryComponent)
